@@ -232,15 +232,15 @@
           (c++-mode  . c++-ts-mode)))
   :config
   (setq treesit-language-source-alist
-	'((ruby "https://github.com/tree-sitter/tree-sitter-ruby")
-	  (go "https://github.com/tree-sitter/tree-sitter-go")
-	  (gomod "https://github.com/camdencheek/tree-sitter-go-mod")
-	  (json "https://github.com/tree-sitter/tree-sitter-json")
-	  (yaml "https://github.com/ikatyang/tree-sitter-yaml")
-	  (javascript "https://github.com/tree-sitter/tree-sitter-javascript")
-	  (c "https://github.com/tree-sitter/tree-sitter-c")
-          (cpp "https://github.com/tree-sitter/tree-sitter-cpp")
-	  (dockerfile "https://github.com/camdencheek/tree-sitter-dockerfile")))
+	'((c "https://github.com/tree-sitter/tree-sitter-c" "v0.21.4")
+          (cpp "https://github.com/tree-sitter/tree-sitter-cpp" "v0.22.0")
+	  (go "https://github.com/tree-sitter/tree-sitter-go" "v0.21.0")
+	  (gomod "https://github.com/camdencheek/tree-sitter-go-mod" "v1.0.2")
+	  (ruby "https://github.com/tree-sitter/tree-sitter-ruby" "v0.21.0")
+	  (json "https://github.com/tree-sitter/tree-sitter-json" "v0.21.0")
+	  (yaml "https://github.com/ikatyang/tree-sitter-yaml" "v0.5.0")
+	  (javascript "https://github.com/tree-sitter/tree-sitter-javascript" "v0.21.2" "src")
+	  (dockerfile "https://github.com/camdencheek/tree-sitter-dockerfile" "v0.2.0")))
 
   (defun zen/install-all-treesit-langs ()
     "Install all Tree-sitter languages defined in `treesit-language-source-alist`."
