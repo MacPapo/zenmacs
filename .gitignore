@@ -23,3 +23,5 @@ elpa/
 eln-cache/
 tree-sitter/
 bookmarks
+secrets.el
+custom.el

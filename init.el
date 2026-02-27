@@ -6,105 +6,119 @@
 
 ;;; Code:
 
-(defun zen/setup-utf8 ()
-  "Forza UTF-8 ovunque. Niente più indovinelli da parte di Emacs."
-  (set-language-environment "UTF-8")
-  (set-default-coding-systems 'utf-8)
-  (set-selection-coding-system 'utf-8)
-  (set-file-name-coding-system 'utf-8)
-  (set-clipboard-coding-system 'utf-8)
-  (set-terminal-coding-system 'utf-8)
-  (set-keyboard-coding-system 'utf-8)
-  (prefer-coding-system 'utf-8)
-  (setq locale-coding-system 'utf-8))
+(prefer-coding-system 'utf-8)
+(setq read-process-output-max (* 2 1024 1024)) ;; 2MB
 
-(zen/setup-utf8)
+;; Reset del Garbage Collector a boot finito (16MB è il sweet spot moderno)
+(add-hook 'emacs-startup-hook
+          (lambda () (setq gc-cons-threshold (* 16 1024 1024))))
+
+(when (memq window-system '(mac ns))
+  (let ((my-paths '("/opt/homebrew/bin"
+                    "/opt/homebrew/sbin"
+                    "~/.local/share/mise/shims"
+                    "/usr/local/bin"
+                    "/usr/bin"
+                    "/bin")))
+    (setq exec-path (append (mapcar #'expand-file-name my-paths) exec-path))
+    (setenv "PATH" (mapconcat #'identity exec-path ":"))))
+
 (require 'package)
-
 (add-to-list 'package-archives '("melpa" . "https://melpa.org/packages/") t)
 (package-initialize)
-
 (require 'use-package)
-
-(use-package exec-path-from-shell
-  :ensure t
-  :config
-  (exec-path-from-shell-initialize))
 
 (use-package emacs
   :init
-  (fido-mode 1)
+  ;; --- Identità e Sicurezza ---
+  ;; Carica il file dei segreti se esiste (ignorando gli errori se manca)
+  (let ((secrets-file (expand-file-name "secrets.el" user-emacs-directory)))
+    (when (file-exists-p secrets-file)
+      (load secrets-file nil t)))
 
+  ;; --- Moduli Custom (Stile Purcell) ---
+  ;; Aggiungi la cartella 'lisp' ai percorsi in cui Emacs cerca i file sorgente
+  (add-to-list 'load-path (expand-file-name "lisp" user-emacs-directory))
+
+  ;; --- UI Pulita ---
+  (setq inhibit-startup-screen t
+        inhibit-startup-message t
+        initial-scratch-message ";; Happy hacking\n\n"
+        use-short-answers t
+        echo-keystrokes 0.1
+        visible-bell nil
+        ring-bell-function 'ignore
+        use-dialog-box nil
+	indicate-buffer-boundaries 'left
+        inhibit-startup-echo-area-message (user-login-name))
+
+  ;; (require 'zen-editing)
+
+  ;; --- Comportamenti e Default Moderni (Loot di Bedrock) ---
+  (setq native-comp-async-report-warnings-errors 'silent)
+  (setq sentence-end-double-space nil)
+  (setq switch-to-buffer-obey-display-actions t)
+
+  ;; --- Scorrimento Fluido al Pixel ---
+  (pixel-scroll-precision-mode 1)
+  (setq mouse-wheel-tilt-scroll t)
+  (setq mouse-wheel-flip-direction t)
+
+  ;; --- Editing Base ---
   (delete-selection-mode 1)
   (electric-pair-mode 1)
+
+  ;; Sblocco comandi avanzati
+  (put 'narrow-to-region 'disabled nil)
+  (put 'narrow-to-page 'disabled nil)
+  (put 'narrow-to-defun 'disabled nil)
+  (put 'upcase-region 'disabled nil)
+  (put 'downcase-region 'disabled nil)
+
+  ;; --- Minibuffer e Autocompletamento (Fase 2) ---
+  (fido-vertical-mode 1)
+
+  (setq completion-ignore-case t
+        read-buffer-completion-ignore-case t
+        read-file-name-completion-ignore-case t
+        read-extended-command-predicate #'command-completion-default-include-p)
+
+  ;; --- Memoria e Navigazione ---
   (savehist-mode 1)
+  (setq history-length 100)
+
   (recentf-mode 1)
+  (setq recentf-max-saved-items 100)
+  (setq recentf-keep '(file-remote-p file-readable-p)) ;; Evita freeze con file di rete
 
   (windmove-default-keybindings)
 
-  (setq-default
-   line-number-mode t
-   column-number-mode t
-   size-indication-mode t)
-
-  (setq completion-styles '(flex substring partial-completion basic)
-	completion-category-overrides
-	'((file (styles partial-completion substring))
-          (buffer (styles flex))
-          (command (styles flex))
-	  (symbol (styles flex substring))))
-
-  (setq completion-ignore-case t
-	read-buffer-completion-ignore-case t
-	read-file-name-completion-ignore-case t)
-
-  (setq use-short-answers t
-	echo-keystrokes 0.1
-	visible-bell nil
-	ring-bell-function 'ignore
-	use-dialog-box nil)
-
+  ;; --- Filesystem e Backup ---
   (setq backup-directory-alist `(("." . ,(concat user-emacs-directory "backups")))
-	auto-save-file-name-transforms `((".*" ,(concat user-emacs-directory "auto-save-list/") t)))
+        auto-save-file-name-transforms `((".*" ,(concat user-emacs-directory "auto-save-list/") t)))
+
+  ;; --- Tema e Font ---
+  (load-theme 'tango t nil)
+  (setq font-lock-maximum-decoration 1)
 
   (when (eq system-type 'darwin)
-
-    (defun my/load-theme (appearance)
-      "Load theme, taking current system APPEARANCE into consideration."
-      (mapc #'disable-theme custom-enabled-themes)
-      (pcase appearance
-        ('light (load-theme 'tango t))
-        ('dark (load-theme 'tango-dark t))))
-
-    (add-hook 'ns-system-appearance-change-functions #'my/load-theme)
-    (set-frame-parameter nil 'ns-transparent-titlebar t)
-    (add-to-list 'default-frame-alist '(ns-transparent-titlebar . t))
-
-    (let ((gls (executable-find "gls")))
-      (when gls (progn
-		  (setq insert-directory-program gls))))
-
     (setq mac-command-modifier 'meta
-	  mac-option-modifier 'none
-	  ns-use-native-fullscreen t)
+          mac-option-modifier 'none
+          ns-use-native-fullscreen t)
+    (add-to-list 'default-frame-alist '(ns-transparent-titlebar . t))
+    (add-to-list 'default-frame-alist '(ns-appearance . light))
 
     (set-face-attribute 'default nil :family "Atkinson Hyperlegible Mono" :height 125)
-    )
+    (let ((gls (executable-find "gls")))
+      (when gls (setq insert-directory-program gls)))))
 
-  (unless (eq system-type 'darwin)
-    (load-theme 'modus-vivendi t nil)
-    (setq modus-themes-italic-constructs t
-	  modus-themes-bold-constructs nil))
-
-  (setq max-lisp-eval-depth 10000)
-  (add-hook 'emacs-startup-hook
-	    (lambda () (setq gc-cons-threshold (* 16 1024 1024)))))
-
-(use-package delight
-  :ensure t
+(use-package tramp
+  :defer t
+  :custom
+  (tramp-default-method "ssh")
+  (vc-ignore-dir-regexp (format "\\(%s\\)\\|\\(%s\\)" vc-ignore-dir-regexp tramp-file-name-regexp))
   :config
-  (delight '((eldoc-mode nil "eldoc")
-             (flymake-mode nil "flymake"))))
+  (setq tramp-auto-save-directory (concat user-emacs-directory "tramp-auto-save/")))
 
 (use-package completion-preview
   :init
@@ -112,6 +126,9 @@
   :bind (:map completion-preview-active-mode-map
               ("M-n"   . completion-preview-next-candidate)
               ("M-p"   . completion-preview-prev-candidate)))
+
+(use-package hippie-exp
+  :bind (("M-/" . hippie-expand)))
 
 (use-package autorevert
   :init
@@ -129,15 +146,43 @@
   :init
   (global-so-long-mode 1))
 
+(use-package repeat
+  :init
+  (repeat-mode 1))
+
 (use-package winner
   :config
   (winner-mode 1))
 
+(use-package window
+  :custom
+  (display-buffer-alist
+   '(
+     ;; 1. BUFFER DI AIUTO E INFORMAZIONI
+     ;; Nome del buffer inizia con *Help*, *Apropos*, *info*, *Messages* ecc.
+     ("\\*\\(Help\\|Apropos\\|info\\|Messages\\|Warnings\\|Compile-Log\\)\\*"
+      (display-buffer-reuse-window display-buffer-at-bottom)
+      (window-height . 0.3)        ; Occupa il 30% dell'altezza dello schermo
+      (reusable-frames . visible)) ; Usa la finestra se esiste già
+
+     ;; 2. COMPILAZIONE E TEST
+     ;; I buffer *compilation* (es. quando lanci 'M-x compile' per Go o C)
+     ("\\*compilation\\*"
+      (display-buffer-reuse-window display-buffer-at-bottom)
+      (window-height . 0.3)
+      (reusable-frames . visible))
+
+     ;; 3. COMPLETAMENTO (Completions)
+     ;; Se decidi di usare finestre di completamento standard in futuro
+     ("\\*Completions\\*"
+      (display-buffer-reuse-window display-buffer-at-bottom)
+      (window-height . 0.2)))))
+
 (use-package whitespace
-  :hook (prog-mode)
-  :config
-  (setq whitespace-line-column 80)
-  (setq whitespace-style '(face tabs empty trailing lines-tail)))
+  :init
+  (setq whitespace-style '(face empty trailing lines-tail))
+  :hook ((prog-mode . whitespace-mode)
+	 (text-mode . whitespace-mode)))
 
 (use-package display-line-numbers
   :hook (prog-mode . display-line-numbers-mode)
@@ -148,7 +193,6 @@
 (use-package display-fill-column-indicator
   :hook (prog-mode . display-fill-column-indicator-mode)
   :custom
-  (indicate-buffer-boundaries 'left)
   (display-fill-column-indicator-character ?¦))
 
 (use-package copyright
@@ -171,16 +215,41 @@
   (lazy-highlight-no-delay-length 4)
   (lazy-count-prefix-format "[%s of %s] ")
   (isearch-forward-thing-at-point '(region url email symbol sexp))
-  (isearch-allow-prefix t))
+  (isearch-allow-prefix t)
+  (isearch-allow-motion t)
+  (isearch-yank-on-move 'shift))
 
 (use-package dired
+  :custom
+  ;; -l: formato lungo, -h: human readable, -v: sort naturale (numeri), --group-directories-first: cartelle in alto
+  (dired-listing-switches "-lhv --group-directories-first")
   :config
   (setq dired-recursive-copies 'always)
   (setq dired-recursive-deletes 'always)
   (setq delete-by-moving-to-trash t)
   (setq dired-dwim-target t))
 
+(use-package which-key
+  :init
+  (which-key-mode 1)
+  :custom
+  (which-key-idle-delay 0.5))
+
+(use-package compile
+  :custom
+  (compilation-scroll-output t)
+  (compilation-always-kill t)
+  ;; Quando premi M-g n (next-error) per saltare tra gli errori nel codice,
+  ;; ignora i semplici "info" o "warning" e fermati solo sugli errori critici (livello 2).
+  (compilation-skip-threshold 2)
+  (compilation-ask-about-save nil)
+  :bind
+  (("C-c c" . compile)
+   ("C-c C" . project-compile)))
+
 (use-package project
+  :custom
+  (project-mode-line t)
   :config
   (add-to-list 'project-vc-extra-root-markers "go.mod"))
 
@@ -191,163 +260,52 @@
   (add-hook 'vc-dir-mode-hook 'hl-line-mode))
 
 (use-package eglot
+  :custom
+  (eglot-autoshutdown t)
+  (eglot-events-buffer-config '(:size 0))
+  (eglot-send-changes-idle-time 0.1)
+  (eglot-extend-to-xref t)
   :config
-  (setq eglot-events-buffer-config '(:size 0)
-	eglot-send-changes-idle-time 0.1
-	eglot-extend-to-xref t)
+  (fset #'jsonrpc--log-event #'ignore)
   (add-to-list 'eglot-stay-out-of 'font-lock)
 
-  (defun zen/eglot-on-connect ()
-    "Attiva feature UI aggiuntive quando Eglot si connette."
-    (eglot-inlay-hints-mode 1))
-
-  (defun zen/eglot-enable-save-actions ()
-    "Attiva Organize Imports (se supportato) e Formattazione al salvataggio."
+  (defun zen/eglot-setup-buffer ()
+    "Attiva inlay hints, formattazione e organize imports per questo buffer."
+    (eglot-inlay-hints-mode 1)
     (add-hook 'before-save-hook
               (lambda ()
                 (when (eglot-managed-p)
                   (ignore-errors (call-interactively #'eglot-code-action-organize-imports))
-                  (eglot-format-buffer)))
-              nil t)))
+                  (ignore-errors (eglot-format-buffer))))
+              nil t)) ; 't' finale = locale al buffer, vitale!
+  (add-hook 'eglot-managed-mode-hook #'zen/eglot-setup-buffer))
 
-(use-package treesit
-  :mode (("\\.go\\'" . go-ts-mode)
-	 ("/go\\.mod\\'"    . go-mod-ts-mode)
-         ("\\.y[a]?ml\\'" . yaml-ts-mode)
-         ("\\.json\\'" . json-ts-mode)
-         ("\\.js\\'"  . js-ts-mode)
-         ("\\.c\\'"   . c-ts-mode)
-         ("\\.cpp\\'" . c++-ts-mode)
-         ("\\.h\\'"   . c-or-c++-ts-mode)
-	 ("/Dockerfile\\(?:\\..*\\)?\\'" . dockerfile-ts-mode)
-         ("\\.dockerfile\\'"             . dockerfile-ts-mode))
-
-  :init
-  (setq major-mode-remap-alist
-	'((yaml-mode . yaml-ts-mode)
-	  (js-mode   . js-ts-mode)
-	  (json-mode . json-ts-mode)
-	  (ruby-mode . ruby-ts-mode)
-	  (c-mode    . c-ts-mode)
-          (c++-mode  . c++-ts-mode)))
-  :config
-  (setq treesit-language-source-alist
-	'((c "https://github.com/tree-sitter/tree-sitter-c" "v0.21.4")
-          (cpp "https://github.com/tree-sitter/tree-sitter-cpp" "v0.22.0")
-	  (go "https://github.com/tree-sitter/tree-sitter-go" "v0.21.0")
-	  (gomod "https://github.com/camdencheek/tree-sitter-go-mod" "v1.0.2")
-	  (ruby "https://github.com/tree-sitter/tree-sitter-ruby" "v0.21.0")
-	  (json "https://github.com/tree-sitter/tree-sitter-json" "v0.21.0")
-	  (yaml "https://github.com/ikatyang/tree-sitter-yaml" "v0.5.0")
-	  (javascript "https://github.com/tree-sitter/tree-sitter-javascript" "v0.21.2" "src")
-	  (dockerfile "https://github.com/camdencheek/tree-sitter-dockerfile" "v0.2.0")))
-
-  (defun zen/install-all-treesit-langs ()
-    "Install all Tree-sitter languages defined in `treesit-language-source-alist`."
-    (interactive)
-    (dolist (lang treesit-language-source-alist)
-      (let ((lang-symbol (car lang)))
-	(if (treesit-language-available-p lang-symbol)
-            (message "Tree-sitter grammar for %s is already installed." lang-symbol)
-          (message "Installing Tree-sitter grammar for %s..." lang-symbol)
-          (treesit-install-language-grammar lang-symbol)))))
-  )
-
-(use-package c-ts-mode
+(use-package c-mode
   :defer t
-  :hook ((c-ts-mode . eglot-ensure)
-         (c-ts-mode . zen/c-setup-buffer))
-  :config
-  (setq c-ts-mode-indent-style 'linux)
-  (setq c-ts-mode-indent-offset 8)
+  :hook (c-mode . eglot-ensure))
 
-  (defun zen/clang-format-buffer ()
-    "Formatta il buffer usando clang-format esterno e applica diff safe."
-    (interactive)
-    (unless (executable-find "clang-format")
-      (user-error "clang-format non trovato"))
-
-    (let ((buf (current-buffer))
-          (binary "clang-format"))
-
-      (with-temp-buffer
-        (let ((temp-buf (current-buffer)))
-          ;; 1. Eseguiamo clang-format su tutto il contenuto
-          (with-current-buffer buf
-            (call-process-region (point-min) (point-max) binary nil temp-buf nil "-style=file"))
-
-          ;; 2. Se c'è output valido, applichiamo le differenze
-          (if (> (point-max) 1)
-              (let ((formatted-content (buffer-string)))
-                (with-current-buffer buf
-                  (replace-region-contents
-                   (point-min) (point-max)
-                   (lambda () formatted-content))
-                  ;; Messaggio discreto (appare solo se lo chiami manualmente)
-                  (message "Zen: Buffer formattato.")))
-            (message "Zen: Errore clang-format (output vuoto)."))))))
-
-  (defun zen/eglot-format-dispatcher (orig-fun &rest args)
-    "Devia la richiesta di formattazione alla nostra funzione su C/C++."
-    (if (derived-mode-p 'c-ts-mode 'c++-ts-mode 'c-or-c++-ts-mode)
-        (zen/clang-format-buffer)
-      (apply orig-fun args)))
-
-  (defun zen/c-setup-buffer ()
-    (setq indent-tabs-mode t)
-    (setq tab-width 8)
-    (setq-local eglot-ignored-server-capabilities
-                '(:documentOnTypeFormattingProvider))
-    (zen/eglot-enable-save-actions))
-
-  (with-eval-after-load 'eglot
-    (advice-add 'eglot-format :around #'zen/eglot-format-dispatcher)
-    (add-to-list 'eglot-server-programs
-                 '((c-ts-mode c++-ts-mode c-or-c++-ts-mode)
-                   . ("clangd"
-                      "-j=8"
-                      "--background-index"
-                      "--clang-tidy"
-                      "--completion-style=detailed"
-                      "--header-insertion=never"
-                      "--header-insertion-decorators=0")))))
-
-(use-package go-ts-mode
+(use-package js
   :defer t
-  :hook ((go-ts-mode . eglot-ensure)
-         (go-ts-mode . zen/go-setup-buffer)
-         (eglot-managed-mode . zen/eglot-on-connect))
-  :config
-  (setq-default eglot-workspace-configuration
-                '((:gopls .
-                          ((staticcheck . t)
-                           (completeUnimported . t)
-                           (usePlaceholders . t)
-                           (analyses . ((unusedparams . t)
-                                        (shadow . t)
-                                        (nilness . t)
-                                        (unusedwrite . t)))
-                           (hints . ((compositeLiteralFields . t)
-                                     (constantValues . t)
-                                     (functionTypeParameters . t)
-                                     (parameterNames . t)))
-                           (gofumpt . t)))))
+  :hook (js-mode . eglot-ensure))
 
-  (defun zen/go-setup-buffer ()
-    (setq indent-tabs-mode t) ; Tab reali per Go
-    (zen/eglot-enable-save-actions)))
+(use-package go-mode
+  :ensure t
+  :defer t
+  :hook ((go-mode . eglot-ensure)
+	 (go-mode . (lambda () (setq indent-tabs-mode t)))))
+
+(use-package yaml-mode
+  :ensure t
+  :defer t)
+
+(use-package dockerfile-mode
+  :ensure t
+  :defer t)
+
+;; --- Customizzazioni Autogenerate ---
+;; Carica il file custom alla fine per garantirgli la priorità
+(setq custom-file (expand-file-name "custom.el" user-emacs-directory))
+(when (file-exists-p custom-file)
+  (load custom-file nil t))
 
 ;;; init.el ends here
-(custom-set-variables
- ;; custom-set-variables was added by Custom.
- ;; If you edit it by hand, you could mess it up, so be careful.
- ;; Your init file should contain only one such instance.
- ;; If there is more than one, they won't work right.
- '(package-selected-packages nil)
- '(safe-local-variable-values '((checkdoc-minor-mode . t))))
-(custom-set-faces
- ;; custom-set-faces was added by Custom.
- ;; If you edit it by hand, you could mess it up, so be careful.
- ;; Your init file should contain only one such instance.
- ;; If there is more than one, they won't work right.
- )
