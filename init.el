@@ -49,10 +49,7 @@
         visible-bell nil
         ring-bell-function 'ignore
         use-dialog-box nil
-	indicate-buffer-boundaries 'left
         inhibit-startup-echo-area-message (user-login-name))
-
-  ;; (require 'zen-editing)
 
   ;; --- Comportamenti e Default Moderni (Loot di Bedrock) ---
   (setq native-comp-async-report-warnings-errors 'silent)
@@ -100,6 +97,9 @@
   ;; --- Tema e Font ---
   (load-theme 'tango t nil)
   (setq font-lock-maximum-decoration 1)
+
+  ;; --- My Packages ---
+  (require 'zen-editing)
 
   (when (eq system-type 'darwin)
     (setq mac-command-modifier 'meta
@@ -193,6 +193,7 @@
 (use-package display-fill-column-indicator
   :hook (prog-mode . display-fill-column-indicator-mode)
   :custom
+  (indicate-buffer-boundaries 'left)
   (display-fill-column-indicator-character ?¦))
 
 (use-package copyright
