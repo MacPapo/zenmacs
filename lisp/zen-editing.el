@@ -201,7 +201,7 @@ Richiede UN SOLO tasto per indicare l'involucro (es. (, [, {, \", ')."
       (if bounds
           (setq beg (car bounds)
                 end (cdr bounds))
-        (error "Zen: Nessun testo da avvolgere qui.")))
+        (error "Zen: Nessun testo da avvolgere qui")))
 
     (let* ((char (read-char "Avvolgi con: "))
            (char-str (char-to-string char))
@@ -249,7 +249,6 @@ Richiede UN SOLO tasto per indicare l'involucro (es. (, [, {, \", ')."
 (define-key zen-inner-map (kbd "s") 'zen/select-inner-symbol)  ; Parola
 (define-key zen-inner-map (kbd "q") 'zen/select-inner-quotes)  ; Virgol. (q)
 (define-key zen-inner-map (kbd "p") 'zen/select-inner-parens)  ; Paren. (p)
-
 
 (provide 'zen-editing)
 ;;; zen-editing.el ends here

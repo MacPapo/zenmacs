@@ -98,9 +98,6 @@
   (load-theme 'tango t nil)
   (setq font-lock-maximum-decoration 1)
 
-  ;; --- My Packages ---
-  (require 'zen-editing)
-
   (setq comment-auto-fill-only-comments t)
   (setq-default fill-column 80)
 
@@ -292,6 +289,13 @@
   :defer t
   :hook (c-mode . eglot-ensure))
 
+(use-package ruby-mode
+  :defer t
+  :hook (ruby-mode . eglot-ensure)
+  :config
+  (with-eval-after-load 'eglot
+    (add-to-list 'eglot-server-programs '((ruby-mode ruby-ts-mode) "ruby-lsp"))))
+
 (use-package js
   :defer t
   :hook (js-mode . eglot-ensure))
@@ -309,6 +313,9 @@
 (use-package dockerfile-mode
   :ensure t
   :defer t)
+
+;; --- My Packages ---
+(require 'zen-editing)
 
 ;; --- Customizzazioni Autogenerate ---
 ;; Carica il file custom alla fine per garantirgli la priorità
