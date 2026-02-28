@@ -101,6 +101,13 @@
   ;; --- My Packages ---
   (require 'zen-editing)
 
+  (setq comment-auto-fill-only-comments t)
+  (setq-default fill-column 80)
+
+  ;; Attivalo solo quando scrivi codice o testo
+  (add-hook 'prog-mode-hook 'auto-fill-mode)
+  (add-hook 'text-mode-hook 'auto-fill-mode)
+
   (when (eq system-type 'darwin)
     (setq mac-command-modifier 'meta
           mac-option-modifier 'none

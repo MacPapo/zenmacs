@@ -25,3 +25,4 @@ tree-sitter/
 bookmarks
 secrets.el
 custom.el
+tramp
