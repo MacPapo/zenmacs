@@ -226,8 +226,7 @@
 
 (use-package dired
   :custom
-  ;; -l: formato lungo, -h: human readable, -v: sort naturale (numeri), --group-directories-first: cartelle in alto
-  (dired-listing-switches "-lhv --group-directories-first")
+  (dired-listing-switches "-AFlbhv --group-directories-first --time-style=long-iso")
   :config
   (setq dired-recursive-copies 'always)
   (setq dired-recursive-deletes 'always)
